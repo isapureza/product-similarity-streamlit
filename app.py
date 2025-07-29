@@ -6,7 +6,7 @@ import plotly.express as px
 from visual import get_top_similar_products
 
 #Load data
-with open('new_product_embeddings.pkl', 'rb') as f:
+with open('new_product_embeddings2.pkl', 'rb') as f:
     product_embeddings = pickle.load(f)
 
 with open ('umap_products.pkl', 'rb') as f:
@@ -44,7 +44,7 @@ if selected_title:
         top_similar = get_top_similar_products(
             selected_title=selected,
             product_embeddings=product_embeddings, w1=0.4, w2=0.3, w3=0.3,
-            alpha=0.5, beta=0.5,
+            alpha=alpha, beta=beta,
             top_n=5
         )
 

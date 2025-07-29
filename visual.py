@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from umap import UMAP
 
-with open('new_product_embeddings.pkl', 'rb') as f:
+with open('new_product_embeddings2.pkl', 'rb') as f:
     product_embeddings = pickle.load(f)
 
 #Combine helper function 
