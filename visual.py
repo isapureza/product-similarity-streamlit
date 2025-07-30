@@ -69,7 +69,7 @@ def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top
         #Compute popularity boost (between 1.0 and 1 + weighted sum)
         popularity_boost = 1 + alpha * norm_ret + beta * norm_sold
 
-        #Adjust sim scoe by popularity
+        #Adjust sim score by popularity
         adjusted_score = sim * popularity_boost
 
         similarities.append({
