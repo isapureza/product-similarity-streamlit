@@ -6,7 +6,7 @@ import plotly.express as px
 from visual import get_top_similar_products
 
 #Load data
-with open('new_product_embeddings2.pkl', 'rb') as f:
+with open('new_product_embeddings3.pkl', 'rb') as f:
     product_embeddings = pickle.load(f)
 
 with open ('umap_products.pkl', 'rb') as f:
@@ -33,6 +33,8 @@ if selected_title:
         w3 = st.sidebar.slider("Weight for Description Embedding", 0.0, 1.0, 0.3)
         alpha = st.sidebar.slider("Weight for Retention", 0.0, 1.0, 0.3)
         beta = st.sidebar.slider("Weight for Sold Count", 0.0, 1.0, 0.3)
+        diversity_weight = st.sidebar.slider("Diversity Level", 0.0, 1.0, 0.0, step=0.1)
+        max_per_brand = st.sidebar.slider("Max products per brand", 1, top_n, top_n, step=1) #Default is no brand diversity in results
         
         total = w1 + w2 + w3
         if total > 0:
@@ -46,7 +48,9 @@ if selected_title:
             selected_title=selected,
             product_embeddings=product_embeddings, w1=0.4, w2=0.3, w3=0.3,
             alpha=alpha, beta=beta,
-            top_n=top_n
+            top_n=top_n,
+            diversity_weight=diversity_weight,
+            max_per_brand=max_per_brand
         )
 
         st.subheader("Most Similar Products:")

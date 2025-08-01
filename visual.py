@@ -3,8 +3,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
 from umap import UMAP
+from collections import defaultdict
 
-with open('new_product_embeddings2.pkl', 'rb') as f:
+with open('new_product_embeddings3.pkl', 'rb') as f:
     product_embeddings = pickle.load(f)
 
 #Combine helper function 
@@ -20,10 +21,38 @@ def combine_embeddings(title_emb, ing_emb, desc_emb, w1, w2, w3, ing_present=Tru
   combined = w1 * title_emb + w2 * ing_emb + w3 * desc_emb
   return combined / np.linalg.norm(combined)
 
-def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top_n=5, alpha=0.3, beta=0.3):
+#Result diversity results
+'''
+Value closer to top n: Allows multiple produts from same brand to be recommended
+Value farther from top n (i.e. 1): Force one/few products per brand (most diverse)
+'''
+def diversify_top_results(similarities, top_n=5, max_per_brand=1):
+    final_results = []
+    brand_counts = defaultdict(int)
+
+    for sim in similarities:
+        brand = sim['vendor']
+        if brand_counts[brand] < max_per_brand:
+            final_results.append(sim)
+            brand_counts[brand] += 1
+        if len(final_results) >= top_n:
+            break
+
+    #If we didn't fill up top_n, allow repeats
+    if len(final_results) < top_n:
+        for sim in similarities:
+            if sim not in final_results:
+                final_results.append(sim)
+            if len(final_results) >= top_n:
+                break
+    return final_results
+
+
+def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top_n=5, alpha=0.3, beta=0.3, diversity_weight=0.0, max_per_brand=1):
     '''
     alpha: weight for retention
     beta: weight for sold_count
+    diversity_weight: 0 = no diversity (same-brand preferred), 1 = high diversity (different brands preferred)
     '''
     
     #Find the selected product
@@ -31,6 +60,9 @@ def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top
     if not selected:
         raise ValueError(f"Product with title '{selected_title}' not found.")
     
+    #Get vendor for diversity calculation
+    selected_brand = selected['vendor']
+
     #Combine embeddings for selected product
     query_emb = combine_embeddings(
         selected['title_emb'], selected['ing_emb'], selected['desc_emb'], w1, w2, w3
@@ -69,8 +101,12 @@ def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top
         #Compute popularity boost (between 1.0 and 1 + weighted sum)
         popularity_boost = 1 + alpha * norm_ret + beta * norm_sold
 
+        #Compute diversity bonus (1 if different brand, 0 if same)
+        is_different_brand = int(prod['vendor'] != selected_brand)
+        diversity_bonus = (1 - diversity_weight) + diversity_weight * is_different_brand
+
         #Adjust sim score by popularity
-        adjusted_score = sim * popularity_boost
+        adjusted_score = sim * popularity_boost * diversity_bonus
 
         similarities.append({
             'title': prod['title'],
@@ -83,9 +119,12 @@ def get_top_similar_products(selected_title, product_embeddings, w1, w2, w3, top
 
     #Sort by similarity descending
     sorted_similar = sorted(similarities, key=lambda x: x['adjusted_score'], reverse=True)
-    
+
     #Return top N
-    return sorted_similar[:top_n]
+    if max_per_brand != top_n: #Want result diversity
+        return diversify_top_results(sorted_similar, top_n=top_n, max_per_brand=max_per_brand)
+    else: #Prioritizes raw score
+        return sorted_similar[:top_n]
 
 
 w1, w2, w3 = 0.33, 0.33, 0.33
